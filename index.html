@@ -1,0 +1,116 @@
+<html>
+    <head>
+        <title></title>
+
+        <script id="shader-fs" type="x-shader/x-fragment">
+            precision mediump float;
+
+            varying vec3 vColor;
+
+            void main(void) {
+                gl_FragColor = vec4(vColor, 1.0);
+            }
+        </script>
+
+        <script id="shader-vs" type="x-shader/x-vertex">
+            attribute float aVertexPositionX;
+            attribute float aVertexPositionY;
+
+            uniform mat4 uMVMatrix;
+            uniform mat4 uPMatrix;
+
+            varying vec3 vColor;
+
+            void main(void) {
+                gl_Position = uPMatrix * uMVMatrix * vec4(
+                    aVertexPositionX,
+                    aVertexPositionY,
+                    0.0,
+                    1.0
+                );
+
+                float yOffset = (aVertexPositionY - 0.0) / 20.0;
+                float xOffset = (aVertexPositionX + 32.0) / 64.0;
+
+                vColor = vec3(
+                    0.2 + 0.8 * yOffset,
+                    1.0 * yOffset,
+                    0.0 + xOffset
+                );
+            }
+        </script>
+        
+        <script data-main="Main" src="lib/require.js"></script>
+
+        <style>
+            body {
+                background-color : black;
+            }
+
+            #canvas {
+                border : none;
+                position : absolute;
+                top : 0;
+                left : 0;
+                z-index : 0;
+            }
+
+            #container {
+                border : 2px solid gray;
+                border-bottom-right-radius : 5px;
+                border-bottom-left-radius : 5px;
+                background-color : #969696;
+                position : absolute;
+                top : 0;
+                left : 75;
+                width : 850;
+                height : 30;
+                z-index : 1;
+            }
+
+            #volume {
+                width : 100;
+                height : 10;
+                top : 2;
+            }
+
+            #arrow {
+                position : absolute;
+                top : 30;
+                left : 485;
+                width : 30;
+                height : 30;
+                background : url("img/arrow_up.png");
+                background-size : cover;
+                z-index : 3;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas" width="512" height="512"></canvas>
+        <div id="container">
+            <input id="input" type="file" class="file" />
+
+            <label>| Analyze type:</label>
+            <select id="analyse" name="analyse">
+                <option value="frequency">frequency</option>
+                <option value="wave">wave</option>
+            </select>
+        
+            <label>| Draw type:</label>
+            <select id="drawType" name="drawType">
+                <option value="0">GL_TRIANGLES</option>
+                <option value="1">GL_TRIANGLE_STRIP</option>
+                <option value="2">GL_TRIANGLE_FAN</option>
+                <option value="3">GL_LINES</option>
+                <option value="4">GL_LINE_LOOP</option>
+                <option value="5">GL_LINE_STRIP</option>
+                <option value="6">GL_POINTS</option>
+            </select>
+
+            <label>| Volume:</label>
+            <input id="volume" type="range" min="0" max="1" step="0.1" value="0.5"/>
+        </div>
+        <div id="arrow"></div>
+    </body>
+</html>
