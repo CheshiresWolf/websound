@@ -10,6 +10,7 @@ define(function(require, exports, module) {
 
         var gl;
         var vertexPositionBuffer, vertexColorBuffer;
+        var cubeVertexPositionBuffer, cubeVertexTextureCoordBuffer;
 
         var drawType;
 
@@ -20,7 +21,7 @@ define(function(require, exports, module) {
         var shaderProgram;
 
         var bar = {
-            count: 32,
+            count : 32,
             vertices : [],
             position : [-32.0, 0.0, -90.0]
         };
@@ -28,10 +29,13 @@ define(function(require, exports, module) {
         bar.vertices = bar.vertices.concat(createBarCoords(
 			bar.count,
 			{
-				x: 2.0,
-				y: 0.0
+				x : 2.0,
+				y : 0.0
 			}
 		));
+
+        var rttFramebuffer;
+        var rttTexture;
 
         function createBarCoords(number, shift) {
 			var i = 0, res = [];
@@ -50,7 +54,7 @@ define(function(require, exports, module) {
 		function getPositionNowX(x) {
 			return [
                 x - 0.5,    x + 0.5,    x + 0.5,
-                x - 0.5,    x - 0.5,    x + 0.5,
+                x - 0.5,    x - 0.5,    x + 0.5
             ];
 		}
 
@@ -136,15 +140,79 @@ define(function(require, exports, module) {
             shaderProgram.vertexPositionAttributeY = gl.getAttribLocation(shaderProgram, "aVertexPositionY");
             gl.enableVertexAttribArray(shaderProgram.vertexPositionAttributeY);
 
+            shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+            gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+
             shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
             shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+            shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
         }
 
         function initBuffers() {
+            initTextureFramebuffer();
+
             vertexPositionBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
 
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bar.vertices), gl.DYNAMIC_DRAW);
+
+            cubeVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+            var cubeVertices = [
+                -1.0,
+                 1.0,
+                 1.0,
+                 1.0,
+                -1.0,
+                -1.0,
+
+                 1.0,
+                 1.0,
+                -1.0,
+                -1.0,
+                -1.0,
+                 1.0
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeVertices), gl.STATIC_DRAW);
+
+            cubeVertexTextureCoordBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+            var cubeTexturePosition = [
+                0.0, 1.0,
+                1.0, 1.0,
+                1.0, 0.0,
+                1.0, 0.0,
+                0.0, 0.0,
+                0.0, 1.0
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeTexturePosition), gl.STATIC_DRAW);
+        }
+
+        function initTextureFramebuffer() {
+            rttFramebuffer = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
+
+            rttFramebuffer.width  = canvas.width;
+            rttFramebuffer.height = canvas.height;
+
+            rttTexture = gl.createTexture();
+
+            gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, rttFramebuffer.width, rttFramebuffer.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        
+            var renderbuffer = gl.createRenderbuffer();
+            gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, rttFramebuffer.width, rttFramebuffer.height);
+
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rttTexture, 0);
+            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         }
 
         function setMatrixUniforms() {
@@ -152,8 +220,8 @@ define(function(require, exports, module) {
             gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
         }
 
-        function drawScene() {
-            gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        function drawToTexture() {
+            gl.viewport(0, 0, rttFramebuffer.width, rttFramebuffer.height);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
             mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
@@ -186,6 +254,75 @@ define(function(require, exports, module) {
             gl.drawArrays(drawType, 0, bar.count * 3 * 2);
 
             mvPopMatrix();
+
+            gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+        }
+
+        function drawScene() {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
+            drawToTexture();
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+            gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+            
+            mat4.identity(mvMatrix);
+
+            mvPushMatrix();
+            //mat4.translate(mvMatrix, [-32.0, -5.0, -90.0]);
+            mat4.translate(mvMatrix, [0.0, 0.0, -10.0]);
+            //mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttributeX, 1, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttributeY, 1, gl.FLOAT, false, 0, 6 * 4);
+            
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+            gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+            
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+            gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(drawType, 0, 6);
+
+            mvPopMatrix();
+
+            // mvPushMatrix();
+            // mat4.translate(mvMatrix, bar.position);
+
+            // gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+            // gl.vertexAttribPointer(
+            //     shaderProgram.vertexPositionAttributeX,
+            //     1,
+            //     gl.FLOAT,
+            //     false,
+            //     0,
+            //     bar.count * 6 * 4
+            // );
+
+            // gl.vertexAttribPointer(
+            //     shaderProgram.vertexPositionAttributeY,
+            //     1,
+            //     gl.FLOAT,
+            //     false,
+            //     0,
+            //     0
+            // );
+
+            // gl.activeTexture(gl.TEXTURE0);
+            // gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+
+            // setMatrixUniforms();
+            // gl.drawArrays(drawType, 0, bar.count * 3 * 2);
+
+            // mvPopMatrix();
         }
 
         self.animate = function(audioArray) {
