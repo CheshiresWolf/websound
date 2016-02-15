@@ -7,8 +7,14 @@ require(["DrawModule", "AudioModule"], function(DrawModule, AudioModule) {
 
 	var core = new DrawModule(
 		canvas,
-		document.getElementById("shader-vs"),
-		document.getElementById("shader-fs")
+		{
+			vs : document.getElementById("main-vs"),
+			fs : document.getElementById("main-fs")
+		},
+		{
+			vs : document.getElementById("texture-vs"),
+			fs : document.getElementById("texture-fs")
+		}
 	);
 	core.init();
 

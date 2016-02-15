@@ -3,7 +3,7 @@ define(function(require, exports, module) {
 	require("./lib/glMatrix");
 	require("./lib/webgl-utils");
 
-    function Core(canvas, vertexShaderScript, fragmentShaderScript) {
+    function Core(canvas, mainShaders, textureShaders) {//vertexShaderScript, fragmentShaderScript) {
         console.log("DrawModule | Core | start");
 
         var self = this;
@@ -18,7 +18,7 @@ define(function(require, exports, module) {
         var pMatrix = mat4.create();
         var mvMatrixStack = [];
 
-        var shaderProgram;
+        var mainProgram, textureProgram;
 
         var bar = {
             count : 32,
@@ -120,32 +120,54 @@ define(function(require, exports, module) {
         }
 
         function initShaders() {
-            var fragmentShader = compileShader(gl, fragmentShaderScript);
-            var vertexShader = compileShader(gl, vertexShaderScript);
+            mainProgram = gl.createProgram();
+            gl.attachShader(mainProgram, compileShader(gl, mainShaders.vs));
+            gl.attachShader(mainProgram, compileShader(gl, mainShaders.fs));
+            gl.linkProgram(mainProgram);
 
-            shaderProgram = gl.createProgram();
-            gl.attachShader(shaderProgram, vertexShader);
-            gl.attachShader(shaderProgram, fragmentShader);
-            gl.linkProgram(shaderProgram);
+            textureProgram = gl.createProgram();
+            gl.attachShader(textureProgram, compileShader(gl, textureShaders.vs));
+            gl.attachShader(textureProgram, compileShader(gl, textureShaders.fs));
+            gl.linkProgram(textureProgram);
+        }
 
-            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        function useMainShader() {
+            if (!gl.getProgramParameter(mainProgram, gl.LINK_STATUS)) {
                 alert("Could not initialise shaders");
             }
 
-            gl.useProgram(shaderProgram);
+            gl.useProgram(mainProgram);
 
-            shaderProgram.vertexPositionAttributeX = gl.getAttribLocation(shaderProgram, "aVertexPositionX");
-            gl.enableVertexAttribArray(shaderProgram.vertexPositionAttributeX);
+            mainProgram.vertexPositionAttributeX = gl.getAttribLocation(mainProgram, "aVertexPositionX");
+            gl.enableVertexAttribArray(mainProgram.vertexPositionAttributeX);
 
-            shaderProgram.vertexPositionAttributeY = gl.getAttribLocation(shaderProgram, "aVertexPositionY");
-            gl.enableVertexAttribArray(shaderProgram.vertexPositionAttributeY);
+            mainProgram.vertexPositionAttributeY = gl.getAttribLocation(mainProgram, "aVertexPositionY");
+            gl.enableVertexAttribArray(mainProgram.vertexPositionAttributeY);
 
-            shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
-            gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+            mainProgram.pMatrixUniform  = gl.getUniformLocation(mainProgram, "uPMatrix");
+            mainProgram.mvMatrixUniform = gl.getUniformLocation(mainProgram, "uMVMatrix");
+        }
 
-            shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
-            shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-            shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+        function useTextureShader() {
+            if (!gl.getProgramParameter(textureProgram, gl.LINK_STATUS)) {
+                alert("Could not initialise shaders");
+            }
+
+            gl.useProgram(textureProgram);
+
+            textureProgram.vertexPositionAttributeX = gl.getAttribLocation(textureProgram, "aVertexPositionX");
+            gl.enableVertexAttribArray(textureProgram.vertexPositionAttributeX);
+
+            textureProgram.vertexPositionAttributeY = gl.getAttribLocation(textureProgram, "aVertexPositionY");
+            gl.enableVertexAttribArray(textureProgram.vertexPositionAttributeY);
+
+            textureProgram.pMatrixUniform  = gl.getUniformLocation(textureProgram, "uPMatrix");
+            textureProgram.mvMatrixUniform = gl.getUniformLocation(textureProgram, "uMVMatrix");
+
+            textureProgram.textureCoordAttribute = gl.getAttribLocation(textureProgram, "aTextureCoord");
+            gl.enableVertexAttribArray(textureProgram.textureCoordAttribute);
+
+            textureProgram.samplerUniform = gl.getUniformLocation(textureProgram, "uSampler");
         }
 
         function initBuffers() {
@@ -233,7 +255,7 @@ define(function(require, exports, module) {
 
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
             gl.vertexAttribPointer(
-                shaderProgram.vertexPositionAttributeX,
+                mainProgram.vertexPositionAttributeX,
                 1,
                 gl.FLOAT,
                 false,
@@ -242,7 +264,7 @@ define(function(require, exports, module) {
             );
 
             gl.vertexAttribPointer(
-                shaderProgram.vertexPositionAttributeY,
+                mainProgram.vertexPositionAttributeY,
                 1,
                 gl.FLOAT,
                 false,
@@ -250,7 +272,9 @@ define(function(require, exports, module) {
                 0
             );
 
-            setMatrixUniforms();
+            gl.uniformMatrix4fv(mainProgram.pMatrixUniform, false, pMatrix);
+            gl.uniformMatrix4fv(mainProgram.mvMatrixUniform, false, mvMatrix);
+
             gl.drawArrays(drawType, 0, bar.count * 3 * 2);
 
             mvPopMatrix();
@@ -262,6 +286,8 @@ define(function(require, exports, module) {
 
         function drawScene() {
             gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
+
+            useMainShader();
             drawToTexture();
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -269,27 +295,30 @@ define(function(require, exports, module) {
             gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+            useTextureShader();
+
             mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
             
             mat4.identity(mvMatrix);
 
             mvPushMatrix();
             //mat4.translate(mvMatrix, [-32.0, -5.0, -90.0]);
-            mat4.translate(mvMatrix, [0.0, 0.0, -10.0]);
+            mat4.translate(mvMatrix, [0.0, 0.0, -5.0]);
             //mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
-            gl.vertexAttribPointer(shaderProgram.vertexPositionAttributeX, 1, gl.FLOAT, false, 0, 0);
-            gl.vertexAttribPointer(shaderProgram.vertexPositionAttributeY, 1, gl.FLOAT, false, 0, 6 * 4);
+            gl.vertexAttribPointer(textureProgram.vertexPositionAttributeX, 1, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribPointer(textureProgram.vertexPositionAttributeY, 1, gl.FLOAT, false, 0, 6 * 4);
             
             gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
-            gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribPointer(textureProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
             
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, rttTexture);
-            gl.uniform1i(shaderProgram.samplerUniform, 0);
+            gl.uniform1i(textureProgram.samplerUniform, 0);
 
-            setMatrixUniforms();
+            gl.uniformMatrix4fv(textureProgram.pMatrixUniform, false, pMatrix);
+            gl.uniformMatrix4fv(textureProgram.mvMatrixUniform, false, mvMatrix);
             gl.drawArrays(drawType, 0, 6);
 
             mvPopMatrix();
