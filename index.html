@@ -47,8 +47,11 @@
 
             uniform sampler2D uSampler;
 
+            varying float opacity;
+
             void main(void) {
-                gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+                vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+                gl_FragColor = vec4(textureColor.rgb, textureColor.a * opacity);
             }
         </script>
 
@@ -62,6 +65,8 @@
 
             varying vec2 vTextureCoord;
 
+            varying float opacity;
+
             void main(void) {
                 gl_Position = uPMatrix * uMVMatrix * vec4(
                     aVertexPositionX,
@@ -71,6 +76,8 @@
                 );
                 
                 vTextureCoord = aTextureCoord;
+
+                opacity = 1.0 - (aVertexPositionY / 33.0);
             }
         </script>
         
@@ -78,13 +85,13 @@
 
         <style>
             body {
-                background-color : black;
+                background-color : white;
             }
 
             #canvas {
                 border : none;
                 position : absolute;
-                top : 0;
+                top : 50;
                 left : 0;
                 z-index : 0;
             }

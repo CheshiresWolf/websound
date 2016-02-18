@@ -23,7 +23,8 @@ define(function(require, exports, module) {
         var bar = {
             count : 32,
             vertices : [],
-            position : [-32.0, 0.0, -90.0]
+            position : [-32.0, -32.0, -32.0]
+            //[-32.0, 0.0, -90.0]
         };
 
         bar.vertices = bar.vertices.concat(createBarCoords(
@@ -52,16 +53,16 @@ define(function(require, exports, module) {
         }
 		
 		function getPositionNowX(x) {
-			return [
-                x - 0.5,    x + 0.5,    x + 0.5,
-                x - 0.5,    x - 0.5,    x + 0.5
+            return [
+                x, x + 1, x + 1,
+                x, x,     x + 1
             ];
 		}
 
         function getPositionNowY(y) {
             return [
-                - 0.5,    - 0.5,    y + 0.5,
-                - 0.5,  y + 0.5,    y + 0.5
+                0, 0,     y + 1,
+                0, y + 1, y + 1
             ];
         }
 
@@ -69,20 +70,23 @@ define(function(require, exports, module) {
         	console.log("DrawModule | Core | self.init");
 
             gl = canvas.getContext("experimental-webgl");
-            gl.viewportWidth = canvas.width;
+            gl.viewportWidth  = canvas.width;
             gl.viewportHeight = canvas.height;
 
             initShaders();
             initBuffers();
 
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
-            gl.enable(gl.DEPTH_TEST);
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.GL_DST_ALPHA);
+            gl.disable(gl.DEPTH_TEST);
 
             drawType = gl.TRIANGLES;
 
             console.log("DrawModule | Core | viewport.size (" + gl.viewportWidth + ", " + gl.viewportHeight + ")");
 
             drawScene();
+            // drawLikeInOldTimes();
         };
 
         function compileShader(gl, shaderScript) {
@@ -190,9 +194,9 @@ define(function(require, exports, module) {
 
                  1.0,
                  1.0,
-                 0.0,// -1.0,
-                 0.0,// -1.0,
-                 0.0,// -1.0,
+                -1.0,
+                -1.0,
+                -1.0,
                  1.0
             ];
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeVertices), gl.STATIC_DRAW);
@@ -258,7 +262,7 @@ define(function(require, exports, module) {
             gl.viewport(0, 0, rttFramebuffer.width, rttFramebuffer.height);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-            mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+            mat4.perspective(90, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
             
             mat4.identity(mvMatrix);
 
@@ -296,6 +300,48 @@ define(function(require, exports, module) {
             gl.bindTexture(gl.TEXTURE_2D, null);
         }
 
+        function drawLikeInOldTimes() {
+            useMainShader();
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+            gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            mat4.perspective(90, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+            
+            mat4.identity(mvMatrix);
+
+            mvPushMatrix();
+            mat4.translate(mvMatrix, bar.position);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+            gl.vertexAttribPointer(
+                mainProgram.vertexPositionAttributeX,
+                1,
+                gl.FLOAT,
+                false,
+                0,
+                bar.count * 6 * 4
+            );
+
+            gl.vertexAttribPointer(
+                mainProgram.vertexPositionAttributeY,
+                1,
+                gl.FLOAT,
+                false,
+                0,
+                0
+            );
+
+            gl.uniformMatrix4fv(mainProgram.pMatrixUniform,  false, pMatrix);
+            gl.uniformMatrix4fv(mainProgram.mvMatrixUniform, false, mvMatrix);
+
+            gl.drawArrays(drawType, 0, bar.count * 3 * 2);
+
+            mvPopMatrix();
+        }
+
         function drawScene() {
             gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
 
@@ -309,7 +355,7 @@ define(function(require, exports, module) {
 
             useTextureShader();
 
-            mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+            mat4.perspective(90, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
             
             mat4.identity(mvMatrix);
 
@@ -317,7 +363,7 @@ define(function(require, exports, module) {
 
             mvPushMatrix();
 
-            mat4.translate(mvMatrix, [0.0, 0.0, -5.0]);
+            mat4.translate(mvMatrix, [0.0, 1.01, -1.0]);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
             gl.vertexAttribPointer(textureProgram.vertexPositionAttributeX, 1, gl.FLOAT, false, 0, 0);
@@ -330,7 +376,7 @@ define(function(require, exports, module) {
             gl.bindTexture(gl.TEXTURE_2D, rttTexture);
             gl.uniform1i(textureProgram.samplerUniform, 0);
 
-            gl.uniformMatrix4fv(textureProgram.pMatrixUniform, false, pMatrix);
+            gl.uniformMatrix4fv(textureProgram.pMatrixUniform,  false, pMatrix);
             gl.uniformMatrix4fv(textureProgram.mvMatrixUniform, false, mvMatrix);
             gl.drawArrays(drawType, 0, 6);
 
@@ -340,10 +386,7 @@ define(function(require, exports, module) {
 
             mvPushMatrix();
 
-            //mat4.translate(mvMatrix, [0.0, -5.0, -5.0]);
-            //mat4.rotate(mvMatrix, 90, [1, 0, 0]);
-            //mat4.rotate(mvMatrix, degToRad(180), [0, 0, 1]);
-            mat4.translate(mvMatrix, [0.0, -2.0, -5.0]);
+            mat4.translate(mvMatrix, [0.0, -1.01, -1.0]);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
             gl.vertexAttribPointer(textureProgram.vertexPositionAttributeX, 1, gl.FLOAT, false, 0, 0);
@@ -356,7 +399,7 @@ define(function(require, exports, module) {
             gl.bindTexture(gl.TEXTURE_2D, rttTexture);
             gl.uniform1i(textureProgram.samplerUniform, 0);
 
-            gl.uniformMatrix4fv(textureProgram.pMatrixUniform, false, pMatrix);
+            gl.uniformMatrix4fv(textureProgram.pMatrixUniform,  false, pMatrix);
             gl.uniformMatrix4fv(textureProgram.mvMatrixUniform, false, mvMatrix);
             gl.drawArrays(drawType, 0, 6);
 
@@ -379,6 +422,7 @@ define(function(require, exports, module) {
             );
 
             drawScene();
+            // drawLikeInOldTimes();
         };
 
         //gl.POINTS, gl.LINES, gl.LINE_LOOP, gl.LINE_STRIP, gl.TRIANGLES, gl.TRIANGLE_STRIP, gl.TRIANGLE_FAN
