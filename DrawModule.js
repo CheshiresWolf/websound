@@ -190,9 +190,9 @@ define(function(require, exports, module) {
 
                  1.0,
                  1.0,
-                -1.0,
-                -1.0,
-                -1.0,
+                 0.0,// -1.0,
+                 0.0,// -1.0,
+                 0.0,// -1.0,
                  1.0
             ];
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeVertices), gl.STATIC_DRAW);
@@ -206,6 +206,18 @@ define(function(require, exports, module) {
                 1.0, 0.0,
                 0.0, 0.0,
                 0.0, 1.0
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeTexturePosition), gl.STATIC_DRAW);
+
+            cubeVertexTextureCoordBufferFlip = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBufferFlip);
+            var cubeTexturePosition = [
+                0.0, 0.0,
+                1.0, 0.0,
+                1.0, 1.0,
+                1.0, 1.0,
+                0.0, 1.0,
+                0.0, 0.0
             ];
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeTexturePosition), gl.STATIC_DRAW);
         }
@@ -222,7 +234,7 @@ define(function(require, exports, module) {
             gl.bindTexture(gl.TEXTURE_2D, rttTexture);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-            gl.generateMipmap(gl.TEXTURE_2D);
+            // gl.generateMipmap(gl.TEXTURE_2D);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, rttFramebuffer.width, rttFramebuffer.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         
             var renderbuffer = gl.createRenderbuffer();
@@ -301,10 +313,11 @@ define(function(require, exports, module) {
             
             mat4.identity(mvMatrix);
 
+            // Draw main texture
+
             mvPushMatrix();
-            //mat4.translate(mvMatrix, [-32.0, -5.0, -90.0]);
+
             mat4.translate(mvMatrix, [0.0, 0.0, -5.0]);
-            //mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
             gl.vertexAttribPointer(textureProgram.vertexPositionAttributeX, 1, gl.FLOAT, false, 0, 0);
@@ -323,35 +336,31 @@ define(function(require, exports, module) {
 
             mvPopMatrix();
 
-            // mvPushMatrix();
-            // mat4.translate(mvMatrix, bar.position);
+            // Draw rotated texture
 
-            // gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
-            // gl.vertexAttribPointer(
-            //     shaderProgram.vertexPositionAttributeX,
-            //     1,
-            //     gl.FLOAT,
-            //     false,
-            //     0,
-            //     bar.count * 6 * 4
-            // );
+            mvPushMatrix();
 
-            // gl.vertexAttribPointer(
-            //     shaderProgram.vertexPositionAttributeY,
-            //     1,
-            //     gl.FLOAT,
-            //     false,
-            //     0,
-            //     0
-            // );
+            //mat4.translate(mvMatrix, [0.0, -5.0, -5.0]);
+            //mat4.rotate(mvMatrix, 90, [1, 0, 0]);
+            //mat4.rotate(mvMatrix, degToRad(180), [0, 0, 1]);
+            mat4.translate(mvMatrix, [0.0, -2.0, -5.0]);
 
-            // gl.activeTexture(gl.TEXTURE0);
-            // gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+            gl.vertexAttribPointer(textureProgram.vertexPositionAttributeX, 1, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribPointer(textureProgram.vertexPositionAttributeY, 1, gl.FLOAT, false, 0, 6 * 4);
+            
+            gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBufferFlip);
+            gl.vertexAttribPointer(textureProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+            
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+            gl.uniform1i(textureProgram.samplerUniform, 0);
 
-            // setMatrixUniforms();
-            // gl.drawArrays(drawType, 0, bar.count * 3 * 2);
+            gl.uniformMatrix4fv(textureProgram.pMatrixUniform, false, pMatrix);
+            gl.uniformMatrix4fv(textureProgram.mvMatrixUniform, false, mvMatrix);
+            gl.drawArrays(drawType, 0, 6);
 
-            // mvPopMatrix();
+            mvPopMatrix();
         }
 
         self.animate = function(audioArray) {
