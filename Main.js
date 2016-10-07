@@ -1,4 +1,18 @@
-require(["DrawModule", "AudioModule"], function(DrawModule, AudioModule) {
+requirejs.config({
+    paths : {
+        // the left side is the module ID,
+        // the right side is the path to
+        // the jQuery file, relative to baseUrl.
+        // Also, the path should NOT include
+        // the '.js' file extension. This example
+        // is using jQuery 1.9.0 located at
+        // js/lib/jquery-1.9.0.js, relative to
+        // the HTML page.
+        jquery : 'lib/jquery'
+    }
+});
+
+requirejs(["DrawModule", "AudioModule", "PlayList", "jquery"], function(DrawModule, AudioModule, PlayListModule, jq) {
 	console.log("Main | init | state = ", document.readyState);
 
 	var canvas = document.getElementById("canvas");
@@ -35,6 +49,13 @@ require(["DrawModule", "AudioModule"], function(DrawModule, AudioModule) {
 		audio.setFile,
 		false
 	);
+
+	// var PlayList = new PlayListModule();
+	var playListUrl = "https://api.soundcloud.com/playlists/206905729?client_id=449395b3fd04617b4dae48a9e9ae1f78";
+
+		jq.get(playListUrl, function(data) {
+			if (DEBUG) console.log("PlayList.js | response : ", data);
+		});
 
 	function center() {
 		var newWidth = window.innerWidth;
