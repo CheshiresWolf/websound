@@ -24,7 +24,6 @@ define(function(require, exports, module) {
             count : 32,
             vertices : [],
             position : [-32.0, -32.0, -32.0]
-            //[-32.0, 0.0, -90.0]
         };
 
         bar.vertices = bar.vertices.concat(createBarCoords(
@@ -79,7 +78,9 @@ define(function(require, exports, module) {
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.GL_DST_ALPHA);
+            // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
             gl.disable(gl.DEPTH_TEST);
+            gl.enable(gl.DEPTH_TEST);
 
             drawType = gl.TRIANGLES;
 

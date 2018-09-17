@@ -1,0 +1,43 @@
+{
+	"name": "websound",
+	"version": "0.0.1",
+	"private": true,
+	"scripts": {
+		"serve": "vue-cli-service serve --mode development"
+	},
+	"dependencies": {
+		"axios": "^0.18.0",
+		"js-beautify": "^1.7.5",
+		"moment": "^2.22.2",
+		"qs": "^6.5.2",
+		"underscore": "^1.9.1",
+		"vue": "^2.5.16",
+		"vue-cytoscape": "^0.1.2",
+		"vue-router": "^3.0.1",
+		"vue-toastr": "^2.0.14",
+		"vuedraggable": "^2.16.0",
+		"vuejs-logger": "1.4.0",
+		"vuetify": "^1.1.12",
+		"vuex": "^3.0.1",
+		"vuex-router-sync": "^5.0.0"
+	},
+	"devDependencies": {
+		"@mdi/font": "^2.4.85",
+		"@vue/cli-plugin-babel": "^3.0.0-rc.3",
+		"@vue/cli-service": "^3.0.0-rc.3",
+		"brace": "^0.11.1",
+		"material-design-icons-iconfont": "^3.0.3",
+		"node-sass": "^4.9.0",
+		"sass-loader": "^7.0.3",
+		"stylus": "^0.54.5",
+		"stylus-loader": "^3.0.2",
+		"sync-exec": "^0.6.2",
+		"uuid": "^3.3.2",
+		"vue-template-compiler": "^2.5.16"
+	},
+	"browserslist": [
+		"> 1%",
+		"last 2 versions",
+		"not ie <= 8"
+	]
+}
